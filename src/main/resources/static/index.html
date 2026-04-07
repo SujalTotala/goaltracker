@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Goal Tracker</title>
+
+    <!-- Bootstrap CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+<div class="container mt-5">
+
+    <h1 class="text-center mb-4">🚀 Goal Tracker</h1>
+
+    <!-- Add Goal -->
+    <div class="input-group mb-3">
+        <input type="text" id="title" class="form-control" placeholder="Enter goal">
+        <button class="btn btn-primary" onclick="addGoal()">Add</button>
+    </div>
+
+    <!-- Progress -->
+    <h5 id="progress">Progress: 0%</h5>
+
+    <!-- Goals List -->
+    <ul id="goalList" class="list-group mt-3"></ul>
+
+</div>
+
+<script>
+
+    const API = "http://localhost:8080/api/goals";
+
+    function loadGoals() {
+        fetch(API)
+            .then(res => res.json())
+            .then(data => {
+                const list = document.getElementById("goalList");
+                list.innerHTML = "";
+
+                let completedCount = 0;
+
+                data.forEach(g => {
+                    if (g.completed) completedCount++;
+
+                    const li = document.createElement("li");
+                    li.className = "list-group-item d-flex justify-content-between align-items-center";
+
+                    li.innerHTML = `
+                    <div>
+                        <input type="checkbox" ${g.completed ? "checked" : ""}
+                        onchange="toggleComplete(${g.id}, '${g.title}', ${g.completed})">
+
+                        <span style="text-decoration:${g.completed ? 'line-through' : 'none'}">
+                            ${g.title}
+                        </span>
+                    </div>
+
+                    <div>
+                        <button class="btn btn-warning btn-sm" onclick="editGoal(${g.id}, '${g.title}')">Edit</button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteGoal(${g.id})">Delete</button>
+                    </div>
+                `;
+
+                    list.appendChild(li);
+                });
+
+                updateProgress(data.length, completedCount);
+            });
+    }
+
+    function addGoal() {
+        const title = document.getElementById("title").value;
+
+        fetch(API, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ title: title, completed: false })
+        })
+            .then(() => {
+                document.getElementById("title").value = "";
+                loadGoals();
+            });
+    }
+
+    function deleteGoal(id) {
+        fetch(`${API}/${id}`, { method: "DELETE" })
+            .then(() => loadGoals());
+    }
+
+    function editGoal(id, oldTitle) {
+        const newTitle = prompt("Edit goal:", oldTitle);
+
+        if (newTitle) {
+            fetch(`${API}/${id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ title: newTitle, completed: false })
+            })
+                .then(() => loadGoals());
+        }
+    }
+
+    function toggleComplete(id, title, completed) {
+        fetch(`${API}/${id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                title: title,
+                completed: !completed
+            })
+        })
+            .then(() => loadGoals());
+    }
+
+    function updateProgress(total, completed) {
+        const percent = total === 0 ? 0 : (completed / total) * 100;
+
+        document.getElementById("progress").innerText =
+            `Progress: ${completed}/${total} (${percent.toFixed(0)}%)`;
+    }
+
+    loadGoals();
+
+</script>
+
+</body>
+</html>

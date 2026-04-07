@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Goal Tracker</title>
+</head>
+<body>
+
+<h1>🚀 Goal Tracker</h1>
+
+<!-- ADD GOAL -->
+<form action="/goals" method="post">
+    <input type="text" name="title" placeholder="Enter goal" required>
+    <button type="submit">Add Goal</button>
+</form>
+
+<hr>
+
+<!-- GOALS LIST -->
+<h2>All Goals</h2>
+
+<table border="1">
+    <tr>
+        <th>Goal</th>
+        <th>Action</th>
+    </tr>
+
+    <tr th:each="g : ${goals}">
+        <td th:text="${g.title}"></td>
+
+        <td>
+            <a th:href="@{'/delete/' + ${g.id}}">
+                <button>Delete</button>
+            </a>
+        </td>
+    </tr>
+</table>
+
+</body>
+</html>
