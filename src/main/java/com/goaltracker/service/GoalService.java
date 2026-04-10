@@ -15,10 +15,15 @@ public class GoalService {
     @Autowired
     private GoalRepository goalRepository;
 
-    // ✅ SAVE (streak + badge logic)
+    // ✅ SAVE (streak + badge + date logic)
     public Goal saveGoal(Goal goal) {
 
         LocalDate today = LocalDate.now();
+
+        // ✅ set date if not provided
+        if (goal.getDate() == null) {
+            goal.setDate(today);
+        }
 
         if (goal.getId() != null) {
             Goal existing = goalRepository.findById(goal.getId()).orElse(null);
@@ -76,7 +81,7 @@ public class GoalService {
                         !g.getLastUpdated().plusDays(1).equals(today)) {
 
                     g.setStreak(0);
-                    g.setBadge("🌱 Beginner"); // reset badge
+                    g.setBadge("🌱 Beginner");
                     goalRepository.save(g);
                 }
             }

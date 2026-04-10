@@ -20,7 +20,11 @@ public class Goal {
 
     private LocalDate lastUpdated;
 
-    // GETTERS & SETTERS
+    private LocalDate date;
+
+    private Long userId;
+
+    // ✅ GETTERS & SETTERS
 
     public Long getId() {
         return id;
@@ -46,6 +50,14 @@ public class Goal {
         this.completed = completed;
     }
 
+    public String getBadge() {
+        return badge;
+    }
+
+    public void setBadge(String badge) {
+        this.badge = badge;
+    }
+
     public int getStreak() {
         return streak;
     }
@@ -62,11 +74,19 @@ public class Goal {
         this.lastUpdated = lastUpdated;
     }
 
-    public String getBadge() {
-        return badge;
+    public LocalDate getDate() {
+        return date;
     }
 
-    public void setBadge(String badge) {
-        this.badge = badge;
+    public void setDate(LocalDate date) {
+        this.date = date;
+    }
+
+    public Long getUserId() {
+        return userId;
+    }
+
+    public void setUserId(Long userId) {
+        this.userId = userId;
     }
 }

@@ -3,124 +3,213 @@
 <head>
     <title>Goal Tracker</title>
 
-    <!-- Bootstrap CDN -->
+    <!-- Bootstrap -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
-<body class="bg-light">
 
-<div class="container mt-5">
+<body class="bg-light" onload="loadGoals()">
 
-    <h1 class="text-center mb-4">🚀 Goal Tracker</h1>
+<div class="container-fluid mt-4">
 
-    <!-- Add Goal -->
-    <div class="input-group mb-3">
-        <input type="text" id="title" class="form-control" placeholder="Enter goal">
-        <button class="btn btn-primary" onclick="addGoal()">Add</button>
+    <h2 class="text-center mb-4">🚀 Goal Tracker Dashboard</h2>
+
+    <div class="row">
+
+        <!-- LEFT SIDE (Daily Goals) -->
+        <div class="col-md-6">
+
+            <h4>📅 Daily Goals</h4>
+
+            <div class="input-group mb-3">
+                <input type="text" id="title" class="form-control" placeholder="Enter goal">
+                <button class="btn btn-primary" onclick="addGoal()">Add</button>
+            </div>
+
+            <!-- Progress -->
+            <h6 id="dailyProgress">Today: 0%</h6>
+
+            <div class="progress mb-3">
+                <div id="progressBar" class="progress-bar bg-success" style="width:0%"></div>
+            </div>
+
+            <!-- Goal List -->
+            <ul id="goalList" class="list-group"></ul>
+
+        </div>
+
+        <!-- RIGHT SIDE (Dashboard) -->
+        <div class="col-md-6">
+
+            <h4>📊 Monthly Dashboard</h4>
+
+            <h6 id="streak">🔥 Streak: 0 days</h6>
+            <h6 id="monthlyProgress">Month: 0%</h6>
+
+            <!-- Heatmap -->
+            <div id="heatmap" class="mt-3"></div>
+
+        </div>
+
     </div>
-
-    <!-- Progress -->
-    <h5 id="progress">Progress: 0%</h5>
-
-    <!-- Goals List -->
-    <ul id="goalList" class="list-group mt-3"></ul>
-
 </div>
 
 <script>
+    const API = "http://localhost:8081";
 
-    const API = "http://localhost:8080/api/goals";
-
+    // LOAD GOALS
     function loadGoals() {
-        fetch(API)
+        fetch(API + "/goals")
             .then(res => res.json())
             .then(data => {
+
                 const list = document.getElementById("goalList");
                 list.innerHTML = "";
 
-                let completedCount = 0;
+                let today = new Date().toISOString().split("T")[0];
+
+                let total = 0;
+                let completed = 0;
 
                 data.forEach(g => {
-                    if (g.completed) completedCount++;
 
-                    const li = document.createElement("li");
-                    li.className = "list-group-item d-flex justify-content-between align-items-center";
+                    if (g.date === today) {
 
-                    li.innerHTML = `
-                    <div>
-                        <input type="checkbox" ${g.completed ? "checked" : ""}
-                        onchange="toggleComplete(${g.id}, '${g.title}', ${g.completed})">
+                        total++;
+                        if (g.completed) completed++;
 
-                        <span style="text-decoration:${g.completed ? 'line-through' : 'none'}">
-                            ${g.title}
-                        </span>
-                    </div>
+                        const li = document.createElement("li");
+                        li.className = "list-group-item d-flex justify-content-between align-items-center";
 
-                    <div>
-                        <button class="btn btn-warning btn-sm" onclick="editGoal(${g.id}, '${g.title}')">Edit</button>
-                        <button class="btn btn-danger btn-sm" onclick="deleteGoal(${g.id})">Delete</button>
-                    </div>
-                `;
+                        li.innerHTML = `
+                        <div>
+                            <input type="checkbox" ${g.completed ? "checked" : ""}
+                            onchange="toggleComplete(${g.id}, '${g.title}', ${g.completed})">
 
-                    list.appendChild(li);
+                            <span style="text-decoration:${g.completed ? 'line-through' : 'none'}">
+                                ${g.title} (${g.badge})
+                            </span>
+                        </div>
+
+                        <button class="btn btn-danger btn-sm"
+                            onclick="deleteGoal(${g.id})">Delete</button>
+                    `;
+
+                        list.appendChild(li);
+                    }
                 });
 
-                updateProgress(data.length, completedCount);
+                // DAILY PROGRESS
+                let percent = total === 0 ? 0 : (completed / total) * 100;
+
+                document.getElementById("dailyProgress").innerText =
+                    `Today: ${completed}/${total} (${percent.toFixed(0)}%)`;
+
+                document.getElementById("progressBar").style.width = percent + "%";
+
+                // OTHER FEATURES
+                generateHeatmap(data);
+                calculateMonthly(data);
+                showStreak(data);
             });
     }
 
+    // ADD GOAL
     function addGoal() {
         const title = document.getElementById("title").value;
 
-        fetch(API, {
+        fetch(API + "/add", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ title: title, completed: false })
-        })
-            .then(() => {
-                document.getElementById("title").value = "";
-                loadGoals();
-            });
-    }
-
-    function deleteGoal(id) {
-        fetch(`${API}/${id}`, { method: "DELETE" })
-            .then(() => loadGoals());
-    }
-
-    function editGoal(id, oldTitle) {
-        const newTitle = prompt("Edit goal:", oldTitle);
-
-        if (newTitle) {
-            fetch(`${API}/${id}`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ title: newTitle, completed: false })
+            body: JSON.stringify({
+                title: title,
+                completed: false
             })
-                .then(() => loadGoals());
-        }
+        }).then(() => {
+            document.getElementById("title").value = "";
+            loadGoals();
+        });
     }
 
+    // DELETE
+    function deleteGoal(id) {
+        fetch(API + "/goals/" + id, {
+            method: "DELETE"
+        }).then(() => loadGoals());
+    }
+
+    // TOGGLE COMPLETE
     function toggleComplete(id, title, completed) {
-        fetch(`${API}/${id}`, {
+        fetch(API + "/goals/" + id, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 title: title,
                 completed: !completed
             })
-        })
-            .then(() => loadGoals());
+        }).then(() => loadGoals());
     }
 
-    function updateProgress(total, completed) {
-        const percent = total === 0 ? 0 : (completed / total) * 100;
+    // MONTHLY CALCULATION
+    function calculateMonthly(data) {
+        let total = 0;
+        let completed = 0;
 
-        document.getElementById("progress").innerText =
-            `Progress: ${completed}/${total} (${percent.toFixed(0)}%)`;
+        let now = new Date();
+
+        data.forEach(g => {
+            let d = new Date(g.date);
+
+            if (d.getMonth() === now.getMonth()) {
+                total++;
+                if (g.completed) completed++;
+            }
+        });
+
+        let percent = total === 0 ? 0 : (completed / total) * 100;
+
+        document.getElementById("monthlyProgress").innerText =
+            `Month: ${completed}/${total} (${percent.toFixed(0)}%)`;
     }
 
-    loadGoals();
+    // HEATMAP
+    function generateHeatmap(data) {
+        const container = document.getElementById("heatmap");
+        container.innerHTML = "";
 
+        for (let i = 1; i <= 30; i++) {
+
+            let dayData = data.filter(g =>
+                new Date(g.date).getDate() === i
+            );
+
+            let total = dayData.length;
+            let completed = dayData.filter(g => g.completed).length;
+
+            let percent = total === 0 ? 0 : completed / total;
+
+            let color = "#eee";
+            if (percent === 1) color = "green";
+            else if (percent > 0) color = "orange";
+
+            let cell = document.createElement("div");
+            cell.style.width = "20px";
+            cell.style.height = "20px";
+            cell.style.display = "inline-block";
+            cell.style.margin = "2px";
+            cell.style.background = color;
+
+            cell.title = `Day ${i}: ${completed}/${total}`;
+
+            container.appendChild(cell);
+        }
+    }
+
+    // STREAK
+    function showStreak(data) {
+        let streak = Math.max(...data.map(g => g.streak || 0));
+        document.getElementById("streak").innerText =
+            `🔥 Streak: ${streak} days`;
+    }
 </script>
 
 </body>
